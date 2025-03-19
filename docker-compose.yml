@@ -27,13 +27,6 @@ services:
     networks:
       - app-network
 
-  composer:
-    image: composer:latest
-    working_dir: /var/www
-    volumes:
-      - ./:/var/www
-    entrypoint: ["composer"]
-
   nginx:
     image: nginx:latest
     volumes:
