@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Repositories\BingoCardRepository;
 use Cache;
+use Illuminate\Support\Collection;
 
 class BingoCardService
 {
@@ -115,7 +116,7 @@ class BingoCardService
      * @param string $rowInput
      * @return void
      */
-    public function inputRows(array $event, string $lineId, string $rowInput)
+    public function inputRows(array $event, string $lineId, string $rowInput): void
     {
         $cacheKey = "bingo_card_temp_{$lineId}";
         $cachedCards = Cache::get($cacheKey, ['current' => [], 'completed' => []]);
@@ -129,7 +130,7 @@ class BingoCardService
         // 確保只允許數字和空格
         if (!preg_match('/^(\d+\s*)+$/', $rowInput)) {
             $this->lineBotService->replyMessage($event['replyToken'], "請輸入有效的數字，並以空格隔開，例如：1 2 3 4 5");
-            return false;
+            return;
         }
 
         // 拆成陣列並轉整數
@@ -255,7 +256,7 @@ class BingoCardService
         foreach ($cards as $card) {
             $rows = $card->numbers;
 
-            $message .= "\n編號：{$card->id}\n";
+            $message .= "\n🎯 編號 {$card->id}\n";
             foreach ($rows as $row) {
                 $message .= implode(' ', array_map(function ($n) {
                     return str_pad($n, 2, ' ', STR_PAD_LEFT) . "\u{200B}";
@@ -263,13 +264,21 @@ class BingoCardService
             }
         }
 
-        $message .= "\n如需刪除卡片，請輸入「刪除編號 1」或「刪除編號 2」...";
+        $message .= "\n如需刪除卡片，請輸入「刪除編號 1」或「刪除編號 2」...\n";
 
         $this->lineBotService->replyMessage($event['replyToken'], $message);
 
         return;
     }
 
+    /**
+     * 處理刪除的指令
+     *
+     * @param array $event
+     * @param string $lineId
+     * @param string $text
+     * @return void
+     */
     public function handleDeleteCommand(array $event, string $lineId, string $text): void
     {
         // 嘗試從文字中抓出數字
@@ -285,6 +294,202 @@ class BingoCardService
         return;
     }
 
+    /**
+     * 開始兌獎
+     *
+     * @param array $event
+     * @param string $lineId
+     * @return void
+     */
+    public function startGame(array $event, string $lineId): void
+    {
+        // 如果還沒有開獎快取，就初始化
+        $cacheKey = "bingo_draw_{$lineId}";
+        if (!Cache::has($cacheKey)) {
+            Cache::put($cacheKey, ['drawn' => []], now()->addMinutes(30));
+            $this->lineBotService->replyMessage($event['replyToken'], "已進入兌獎模式！\n\n請依序輸入開獎號碼，系統將即時更新中獎狀況。\n\n一次輸入多個號碼時，請以空格或逗號分隔，例如：1 2 3 或 1,2,3 \n");
+            return;
+        }
+
+        // 若已經有快取，不重複初始化
+        $this->lineBotService->replyMessage($event['replyToken'], "請輸入開獎號碼！");
+    }
+
+
+    /**
+     * 取得所有已開獎號碼
+     *
+     * @param array $event
+     * @param string $lineId
+     * @return void
+     */
+    public function getDrawNumbers(array $event, string $lineId): void
+    {
+        $draw = Cache::get("bingo_draw_{$lineId}", ['drawn' => []]);
+
+        if (empty($draw['drawn'])) {
+            $this->lineBotService->replyMessage($event['replyToken'], "目前尚無已開獎號碼");
+            return;
+        }
+
+        $drawnNumbers = $draw['drawn'];
+        sort($drawnNumbers); // 排序號碼，讓顯示更清楚
+        $count = count($drawnNumbers);
+        $list = implode(', ', $drawnNumbers);
+
+        $message = "📣 已開獎號碼共有 {$count} 個：\n{$list}";
+        $this->lineBotService->replyMessage($event['replyToken'], $message);
+    }
+
+    /**
+     * 輸入中獎號碼
+     *
+     * @param array $event
+     * @param string $lineId
+     * @param string $input
+     * @return void
+     */
+    public function inputDrawNumbers(array $event, string $lineId, string $input): void
+    {
+        // 是否存在賓果卡
+        $cards = $this->bingoCardRepo->getBingoCards($lineId);
+        if ($cards->isEmpty()) {
+            $this->lineBotService->replyMessage($event['replyToken'], '您尚未建立任何賓果卡，請輸入『新增賓果卡』後，建立完畢後再行兌獎');
+            return;
+        }
+
+        // 擷取所有數字（允許空格與逗號間隔）
+        if (!preg_match_all('/\b\d+\b/', $input, $matches)) {
+            $this->lineBotService->replyMessage($event['replyToken'], "請僅輸入 1 到 75 的數字\n一次輸入1個或多個數字\n並空格或逗號分隔，例如：1 2 3 或 1,2,3");
+            return;
+        }
+
+        $numbers = array_map('intval', $matches[0] ?? []);
+
+        // 檢查是否有非法格式（即原字串中有非數字的部分）
+        $cleaned = implode(' ', $numbers);
+        if (preg_replace('/[,\s]+/', ' ', trim($input)) !== $cleaned) {
+            $this->lineBotService->replyMessage($event['replyToken'], "格式錯誤！請僅輸入數字，並以空格或逗號分隔，例如：1 2 3 或 1,2,3");
+            return;
+        }
+
+        // 驗證數字範圍
+        $invalid = array_filter($numbers, function ($n) {
+            return $n < 1 || $n > 75;
+        });
+        if (!empty($invalid)) {
+            $this->lineBotService->replyMessage($event['replyToken'], "號碼必須介於 1 到 75 之間，請重新輸入！");
+            return;
+        }
+
+        // 快取開獎號碼
+        $cacheKey = "bingo_draw_{$lineId}";
+        $drawNumbers = Cache::get($cacheKey, ['drawn' => []]);
+
+        // 避免重複輸入
+        $duplicateNumbers = array_intersect($numbers, $drawNumbers['drawn']);
+        if (!empty($duplicateNumbers)) {
+            $this->lineBotService->replyMessage($event['replyToken'], "數字 " . implode(", ", $duplicateNumbers) . " 已經開出過了，請輸入其他號碼！");
+            return;
+        }
+
+        $drawNumbers['drawn'] = array_merge($drawNumbers['drawn'], $numbers);
+        Cache::put($cacheKey, $drawNumbers, now()->addHours(1));
+
+        // 呼叫兌獎流程
+        $message = $this->isBingo($cards, $drawNumbers["drawn"]);
+
+        $this->lineBotService->replyMessage($event['replyToken'], $message);
+    }
+
+    /**
+     * 清除已紀錄的中獎號碼
+     *
+     * @param array $event
+     * @param string $lineId
+     * @return void
+     */
+    public function cancelDrawNumbers(array $event, string $lineId): void
+    {
+        $cacheKey = "bingo_draw_{$lineId}";
+
+        if (!Cache::has($cacheKey)) {
+            $this->lineBotService->replyMessage($event['replyToken'], "目前沒有任何開獎號碼可以取消。");
+            return;
+        }
+
+        Cache::forget($cacheKey);
+        $this->lineBotService->replyMessage($event['replyToken'], "已取消目前所有開獎號碼！");
+    }
+
+    /**
+     * 進行賓果核對
+     *
+     * @param Collection $cards
+     * @param array $drawNumbers
+     * @return string
+     */
+    private function isBingo(Collection $cards, array $drawNumbers): string
+    {
+        $reply = "已開獎號碼：" . implode(', ', $drawNumbers) . "\n";
+
+        foreach ($cards as $card) {
+            $grid = $card->numbers;
+            $bingoLines = 0;
+
+            // 檢查橫線
+            foreach ($grid as $row) {
+                if (collect($row)->every(function ($num) use ($drawNumbers) {
+                    return $num === 0 || in_array($num, $drawNumbers);
+                })) {
+                    $bingoLines++;
+                }
+            }
+
+            // 檢查直線
+            for ($col = 0; $col < 5; $col++) {
+                $column = array_column($grid, $col);
+                if (collect($column)->every(function ($num) use ($drawNumbers) {
+                    return $num === 0 || in_array($num, $drawNumbers);
+                })) {
+                    $bingoLines++;
+                }
+            }
+
+            // 檢查對角線
+            $diag1 = $diag2 = true;
+            for ($i = 0; $i < 5; $i++) {
+                $diag1 &= ($grid[$i][$i] === 0 || in_array($grid[$i][$i], $drawNumbers));
+                $diag2 &= ($grid[$i][4 - $i] === 0 || in_array($grid[$i][4 - $i], $drawNumbers));
+            }
+            $bingoLines += ($diag1 ? 1 : 0) + ($diag2 ? 1 : 0);
+
+            // 撈出中獎號碼（排除 free space 0）
+            $matchedNumbers = [];
+            foreach ($drawNumbers as $num) {
+                foreach ($grid as $row) {
+                    if (in_array($num, $row)) {
+                        $matchedNumbers[] = $num;
+                        break; // 找到就跳出，不必重複
+                    }
+                }
+            }
+
+            $matchedStr = empty($matchedNumbers) ? '無' : implode(', ', $matchedNumbers);
+            $reply .= "\n🎯 編號 {$card->id}\n已連線：{$bingoLines} 條\n已中獎號碼：{$matchedStr}\n";
+        }
+
+        return $reply;
+    }
+
+    /**
+     * 刪除指定編號的賓果卡
+     *
+     * @param array $event
+     * @param string $lineId
+     * @param integer $cardId
+     * @return void
+     */
     private function deleteCardById(array $event, string $lineId, int $cardId): void
     {
         $card = $this->bingoCardRepo->getBingoCardById($lineId, $cardId);

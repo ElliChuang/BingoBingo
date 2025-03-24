@@ -127,6 +127,8 @@ class WebhookController extends Controller
         // 遊戲模式：對應 function
         $commands[UserStatusService::MODE_GAME] = [
             '開始兌獎' => 'startGame',
+            '顯示所有開獎號碼' => 'getDrawNumbers',
+            '取消兌獎' => 'cancelDrawNumbers'
         ];
 
         // 取得當前模式
@@ -148,7 +150,10 @@ class WebhookController extends Controller
             if ($currentMode === UserStatusService::MODE_CARD) {
                 $this->bingoCardService->inputRows($event, $lineId, $oriText);
             }
-            // 在遊戲模式時，進入兌獎
+            // 在遊戲模式時，輸入數字開始兌獎 
+            elseif ($currentMode === UserStatusService::MODE_GAME) {
+                $this->bingoCardService->inputDrawNumbers($event, $lineId, $oriText);
+            }
         }
 
         return;
@@ -167,6 +172,8 @@ class WebhookController extends Controller
             '新增賓果卡' => UserStatusService::MODE_CARD,
             '顯示所有賓果卡' => UserStatusService::MODE_CARD,
             '開始兌獎' => UserStatusService::MODE_GAME,
+            '顯示所有已開獎號碼' => UserStatusService::MODE_GAME,
+            '取消兌獎' => UserStatusService::MODE_GAME,
         ];
 
         if (array_key_exists($text, $modeMap)) {
