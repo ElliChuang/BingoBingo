@@ -66,7 +66,7 @@ class WebhookController extends Controller
                     $this->handleFollow($event, $lineId);
                     break;
                 case 'message':
-                    //$this->handleMessage($event, $lineId);
+                    $this->handleMessage($event, $lineId);
                     break;
             }
         }
@@ -85,5 +85,129 @@ class WebhookController extends Controller
     {
         $this->userRegisterService->registerUser($event, $lineId);
         return;
+    }
+
+    /**
+     * 處理 message 事件
+     *
+     * @param array $event
+     * @param string $lineId
+     * @return void
+     */
+    private function handleMessage(array $event, string $lineId): void
+    {
+        $oriText = $event['message']['text'] ?? '';
+        $messageText = trim(str_replace(' ', '', $oriText));
+        $isNumberInput = preg_match('/^\d/', $oriText);
+
+        // 刪除特定編號的賓果卡
+        if (str_starts_with($oriText, '刪除編號')) {
+            // 若不是卡片模式，引導切換模式
+            if ($this->userStatusService->getUserMode($lineId) !== UserStatusService::MODE_CARD) {
+                $this->lineBotService->replyMessage($event['replyToken'], "請先輸入「顯示所有賓果卡」，再執行此操作！");
+                return;
+            }
+
+            $this->bingoCardService->handleDeleteCommand($event, $lineId, $oriText);
+            return;
+        }
+
+        // 設定使用者模式
+        $this->setUserMode($lineId, $messageText);
+
+        // 卡片模式：對應 function
+        $commands[UserStatusService::MODE_CARD] = [
+            '新增賓果卡' => 'checkTempCard',
+            '取消'     => 'cancelTempCard',
+            '繼續'     => 'continueTempCard',
+            '確認'     => 'confirmAndCreateCard',
+            '顯示所有賓果卡' => 'getCards',
+        ];
+
+        // 遊戲模式：對應 function
+        $commands[UserStatusService::MODE_GAME] = [
+            '開始兌獎' => 'startGame',
+        ];
+
+        // 取得當前模式
+        $currentMode = $this->userStatusService->getUserMode($lineId);
+        // 確保該模式下有 command 設定，並執行對應 function
+        if (isset($commands[$currentMode]) && array_key_exists($messageText, $commands[$currentMode])) {
+            $method = $commands[$currentMode][$messageText];
+            $this->bingoCardService->$method($event, $lineId);
+        }
+        // 若這個指令存在於其他模式中，但不是當前模式，則提示切換
+        elseif ($this->isCommandInOtherMode($messageText, $currentMode, $commands)) {
+            $correctMode = $this->getCommandCorrectMode($messageText, $commands);
+            $guideCommandName = $correctMode === UserStatusService::MODE_CARD ? '顯示所有賓果卡' : '開始兌獎';
+            $this->lineBotService->replyMessage($event['replyToken'], "請先輸入：「{$guideCommandName}」，再執行此操作！");
+        }
+        // 非指令但是數字輸入
+        elseif ($isNumberInput) {
+            // 在卡片模式時，輸入每排數字
+            if ($currentMode === UserStatusService::MODE_CARD) {
+                $this->bingoCardService->inputRows($event, $lineId, $oriText);
+            }
+            // 在遊戲模式時，進入兌獎
+        }
+
+        return;
+    }
+
+    /**
+     * 設定當前使用者模式
+     *
+     * @param string $lineId
+     * @param string $text
+     * @return void
+     */
+    private function setUserMode(string $lineId, string $text): void
+    {
+        $modeMap = [
+            '新增賓果卡' => UserStatusService::MODE_CARD,
+            '顯示所有賓果卡' => UserStatusService::MODE_CARD,
+            '開始兌獎' => UserStatusService::MODE_GAME,
+        ];
+
+        if (array_key_exists($text, $modeMap)) {
+            $this->userStatusService->setUserMode($lineId, $modeMap[$text]);
+        }
+
+        return;
+    }
+
+    /**
+     * 確認是否為其他模式的指令
+     *
+     * @param string $text
+     * @param integer|null $currentMode
+     * @param array $commands
+     * @return boolean
+     */
+    private function isCommandInOtherMode(string $text, ?int $currentMode, array $commands): bool
+    {
+        foreach ($commands as $mode => $commandSet) {
+            if ($currentMode !== $mode && array_key_exists($text, $commandSet)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 取得指令對應的模式
+     *
+     * @param string $text
+     * @param array $commands
+     * @return integer|null
+     */
+    private function getCommandCorrectMode(string $text, array $commands): ?int
+    {
+        foreach ($commands as $mode => $commandSet) {
+            if (array_key_exists($text, $commandSet)) {
+                return $mode;
+            }
+        }
+        return null;
     }
 }
