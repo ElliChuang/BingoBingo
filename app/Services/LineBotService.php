@@ -5,6 +5,7 @@ namespace App\Services;
 use GuzzleHttp\Client;
 use LINE\Clients\MessagingApi\Configuration;
 use LINE\Clients\MessagingApi\Api\MessagingApiApi;
+use Log;
 
 class LineBotService
 {
@@ -36,5 +37,30 @@ class LineBotService
             'replyToken' => $replyToken,
             'messages' => [['type' => 'text', 'text' => $text]]
         ]);
+    }
+
+    /**
+     * 取得 line profile 資訊
+     *
+     * @param string $lineId
+     * @return array
+     */
+    public function fetchLineUserProfile(string $lineId): array
+    {
+        try {
+            $response = $this->bot->getProfile($lineId);
+
+            if (!isset($response)) {
+                return [];
+            }
+
+            return [
+                'displayName' => $response->getDisplayName(),
+                'userId' => $response->getUserId(),
+            ];
+        } catch (\Exception $e) {
+            Log::error('[LINE 取得 profile 失敗] ' . $e->getMessage());
+            return [];
+        }
     }
 }

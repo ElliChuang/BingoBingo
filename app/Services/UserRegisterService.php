@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Repositories\BingoCardRepository;
 use App\Repositories\UserRepository;
-use GuzzleHttp\Client;
 use Log;
 
 class UserRegisterService
@@ -47,42 +46,21 @@ class UserRegisterService
     public function registerUser(array $event, string $lineId): void
     {
         // 取得 LINE 使用者資訊
-        $profile = $this->fetchLineUserProfile($lineId);
+        $profile = $this->lineBotService->fetchLineUserProfile($lineId);
         $user = $this->userRepo->findOrCreateUser($lineId, $profile['displayName'] ?? null);
         // 已經存在的用戶，確認是否有賓果卡的紀錄
         $cardCount = $this->bingoCardRepo->countUserCards($user->id);
 
-        if ($user->wasRecentlyCreated) {
-            $this->lineBotService->replyMessage($event['replyToken'], "歡迎加入 Bingo 遊戲！\n請點選下方選單新增賓果卡，完成後就可以開始兌獎囉！");
-        } else {
-            $this->lineBotService->replyMessage($event['replyToken'], "歡迎回來！\n您目前有{$cardCount}張賓果卡 \n1.直接開始兌獎，請點選下方選單『開始兌獎』\n 2.或點選下方選單新增/刪除賓果卡");
+        try {
+            if ($user->wasRecentlyCreated) {
+                $this->lineBotService->replyMessage($event['replyToken'], "歡迎加入 Bingo 遊戲！\n請點選下方選單新增賓果卡，完成後就可以開始兌獎囉！");
+            } else {
+                $this->lineBotService->replyMessage($event['replyToken'], "歡迎回來！\n您目前有{$cardCount}張賓果卡 \n\n1.直接開始兌獎，請點選下方選單『開始兌獎』\n\n2.或點選下方選單『新增賓果卡』");
+            }
+        } catch (\Exception $e) {
+            Log::error('[LineBot 回覆失敗] ' . $e->getMessage());
         }
 
         return;
-    }
-
-    /**
-     * 取得 line profile 資訊
-     *
-     * @param string $lineId
-     * @return array
-     */
-    private function fetchLineUserProfile(string $lineId): array
-    {
-        try {
-            $client = new Client();
-            $response = $client->get("https://api.line.me/v2/bot/profile/{$lineId}", [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . config('services.line.channel_access_token'),
-                    'Content-Type' => 'application/json',
-                ],
-            ]);
-
-            $data = json_decode($response->getBody(), true);
-            return $data;
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch LINE user profile: ' . $e->getMessage());
-            return [];
-        }
     }
 }
