@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\BingoCard;
 use App\Models\User;
+use App\Repositories\BingoCardRepository;
 use App\Services\LineBotService;
 use App\Services\UserStatusService;
 use Illuminate\Support\Facades\Cache;
@@ -44,16 +46,7 @@ class WebhookControllerTest extends TestCase
                 ->andReturnNull();
         });
 
-        $payload = [
-            'events' => [
-                [
-                    'type' => 'follow',
-                    'source' => ['userId' => $fakeLineId],
-                    'replyToken' => $replyToken
-                ]
-            ]
-        ];
-
+        $payload = $this->getMockPayload('follow', '', $fakeLineId, $replyToken);
         $response = $this->postJson('/api/webhook', $payload);
         $response->assertStatus(200);
 
@@ -92,16 +85,7 @@ class WebhookControllerTest extends TestCase
                 ->andReturnNull();
         });
 
-        $payload = [
-            'events' => [
-                [
-                    'type' => 'follow',
-                    'source' => ['userId' => $existingUser->line_id],
-                    'replyToken' => $replyToken,
-                ]
-            ]
-        ];
-
+        $payload = $this->getMockPayload('follow', '', $existingUser->line_id, $replyToken);
         $response = $this->postJson('/api/webhook', $payload);
         $response->assertStatus(200);
 
@@ -132,14 +116,7 @@ class WebhookControllerTest extends TestCase
                 ->andThrow(new \Exception('Invalid reply token'));
         });
 
-        $payload = [
-            'events' => [[
-                'type' => 'follow',
-                'source' => ['userId' => $fakeLineId],
-                'replyToken' => $replyToken,
-            ]]
-        ];
-
+        $payload = $this->getMockPayload('follow', '', $fakeLineId, $replyToken);
         $response = $this->postJson('/api/webhook', $payload);
         $response->assertStatus(200);
     }
@@ -167,14 +144,7 @@ class WebhookControllerTest extends TestCase
                 ->andReturnNull();
         });
 
-        $payload = [
-            'events' => [[
-                'type' => 'follow',
-                'source' => ['userId' => $fakeLineId],
-                'replyToken' => $replyToken,
-            ]]
-        ];
-
+        $payload = $this->getMockPayload('follow', '', $fakeLineId, $replyToken);
         $response = $this->postJson('/api/webhook', $payload);
         $response->assertStatus(200);
 
@@ -183,5 +153,153 @@ class WebhookControllerTest extends TestCase
             'line_id' => $fakeLineId,
             'name' => null,
         ]);
+    }
+
+
+
+    /*****************************
+     *       message events      *
+     *****************************/
+
+
+    /**
+     * 新增賓果卡，建立暫存卡片
+     *
+     * @return void
+     */
+    public function testUserCanStartCreatingBingoCard(): void
+    {
+        Cache::spy();
+
+        $fakeLineId = 'U1234567890';
+        $replyToken = 'testToken';
+
+        $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
+            $mock->shouldReceive('setUserMode')
+                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->andReturnNull();
+
+            $mock->shouldReceive('getUserMode')
+                ->andReturn(UserStatusService::MODE_CARD);
+        });
+
+        $this->mock(LineBotService::class, function ($mock) use ($replyToken) {
+            $mock->shouldReceive('replyMessage')
+                ->once()
+                ->with($replyToken, \Mockery::on(function ($message) {
+                    return str_contains($message, '請輸入賓果卡的第一排數字');
+                }))
+                ->andReturnNull();
+        });
+
+        $payload = $this->getMockPayload('message', '新增賓果卡', $fakeLineId, $replyToken);
+        $response = $this->postJson('/api/webhook', $payload);
+        $response->assertStatus(200);
+
+        // 驗證快取裡面是否存在該使用者的暫存卡片
+        Cache::shouldHaveReceived('put')
+            ->with("bingo_card_temp_{$fakeLineId}", \Mockery::type('array'), \Mockery::any())
+            ->once();
+    }
+
+    /**
+     * 顯示賓果卡（已存在賓果卡）
+     *
+     * @return void
+     */
+    public function testShowBingoCardsWhenCardsExist(): void
+    {
+        $fakeLineId = 'U1234567890';
+        $replyToken = 'testToken';
+
+        $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
+            $mock->shouldReceive('setUserMode')
+                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->andReturnNull();
+
+            $mock->shouldReceive('getUserMode')
+                ->andReturn(UserStatusService::MODE_CARD);
+        });
+
+        // 模擬有賓果卡
+        $this->mock(BingoCardRepository::class, function ($mock) use ($fakeLineId) {
+            $mock->shouldReceive('getBingoCards')
+                ->with($fakeLineId)
+                ->andReturn(BingoCard::factory()->count(1)->make(['line_id' => $fakeLineId]));
+        });
+
+        $this->mock(LineBotService::class, function ($mock) use ($replyToken) {
+            $mock->shouldReceive('replyMessage')
+                ->once()
+                ->with($replyToken, \Mockery::on(function ($message) {
+                    return str_contains($message, '您目前有') || str_contains($message, '張賓果卡');
+                }))
+                ->andReturnNull();
+        });
+
+        $payload = $this->getMockPayload('message', '顯示所有賓果卡', $fakeLineId, $replyToken);
+        $response = $this->postJson('/api/webhook', $payload);
+        $response->assertStatus(200);
+    }
+
+    /**
+     * 顯示賓果卡（不存在賓果卡）
+     *
+     * @return void
+     */
+    public function testShowBingoCardsWhenCardsNotExist(): void
+    {
+        $fakeLineId = 'U1234567890';
+        $replyToken = 'testToken';
+
+        $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
+            $mock->shouldReceive('setUserMode')
+                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->andReturnNull();
+
+            $mock->shouldReceive('getUserMode')
+                ->andReturn(UserStatusService::MODE_CARD);
+        });
+
+        // 模擬沒有賓果卡
+        $this->mock(BingoCardRepository::class, function ($mock) use ($fakeLineId) {
+            $mock->shouldReceive('getBingoCards')
+                ->with($fakeLineId)
+                ->andReturn(collect());
+        });
+
+        $this->mock(LineBotService::class, function ($mock) use ($replyToken) {
+            $mock->shouldReceive('replyMessage')
+                ->once()
+                ->with($replyToken, \Mockery::on(function ($message) {
+                    return str_contains($message, '尚未建立任何賓果卡');
+                }))
+                ->andReturnNull();
+        });
+
+        $payload = $this->getMockPayload('message', '顯示所有賓果卡', $fakeLineId, $replyToken);
+        $response = $this->postJson('/api/webhook', $payload);
+        $response->assertStatus(200);
+    }
+
+    /**
+     * 模擬 payload
+     *
+     * @param string $type
+     * @param string $text
+     * @param string $lineId
+     * @param string $replyToken
+     * @return array
+     */
+    private function getMockPayload(string $type, string $text, string $lineId, string $replyToken): array
+    {
+        return [
+            'events' => [[
+                'type' => $type,
+                'message' => ['type' => 'text', 'text' => $text],
+                'source' => ['userId' => $lineId],
+                'replyToken' => $replyToken,
+            ]]
+        ];
     }
 }
