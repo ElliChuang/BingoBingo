@@ -206,7 +206,7 @@ class BingoCardService
     }
 
     /**
-     * 確定建立賓果卡
+     * 確認建立賓果卡
      *
      * @param array $event
      * @param string $lineId
