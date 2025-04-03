@@ -5,9 +5,9 @@ services:
     volumes:
       - ./:/var/www
     environment:
-      APP_ENV: "${APP_ENV:-local}"
-      APP_DEBUG: "${APP_DEBUG:-true}"
-      DB_HOST: "${DB_HOST:-db}"
+      APP_ENV: "${APP_ENV}"
+      APP_DEBUG: "${APP_DEBUG}"
+      DB_HOST: "${DB_HOST}"
     depends_on:
       - db
     networks:
