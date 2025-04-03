@@ -85,6 +85,13 @@ class WebhookControllerTest extends TestCase
                 ->andReturnNull();
         });
 
+        // 模擬有賓果卡
+        $this->mock(BingoCardRepository::class, function ($mock) use ($existingUser) {
+            $mock->shouldReceive('countUserCards')
+                ->with($existingUser->line_id)
+                ->andReturn(1);
+        });
+
         $payload = $this->getMockPayload('follow', '', $existingUser->line_id, $replyToken);
         $response = $this->postJson('/api/webhook', $payload);
         $response->assertStatus(200);

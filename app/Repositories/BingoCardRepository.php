@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 
 class BingoCardRepository
 {
-    public function countUserCards(int $lineId): int
+    public function countUserCards(string $lineId): int
     {
         return BingoCard::where('line_id', $lineId)->count();
     }
