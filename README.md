@@ -1,66 +1,65 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# LINE Bingo Game（Laravel+Docker+CI）
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+這是一個透過 **LINE Bot** 與使用者互動的賓果遊戲，使用**PHP** 搭配 **Laravel 框架** 建立遊戲邏輯，透過 **Docker Compose** 快速建置開發環境。並使用 **Cloudflare Tunnel**，在本地運行並支援 HTTPS Webhook。
 
-## About Laravel
+## 目錄
+- [架構圖](#架構圖)
+- [賓果遊戲流程](#賓果遊戲流程)
+- [主要技術](#主要技術)
+- [開發與啟動方式](#開發與啟動方式)
+- [賓果遊戲 Demo](#賓果遊戲-demo)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 架構圖
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+![](./readme/architecture.png)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 賓果遊戲流程
 
-## Learning Laravel
+### 1. 加入好友
+使用者加入 LINE Bot 時會觸發 Webhook，後端建立使用者資料，並回傳歡迎訊息。
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### [2. 建立賓果卡](#1-加入好友並建立賓果卡)
+- 使用者可透過圖文選單選擇「新增賓果卡」
+- 系統引導輸入 5x5 的賓果卡號碼
+- 使用者確認後會建立卡片
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### [3. 開始對獎](#2-開始對獎)
+- 輸入「開始兌獎」進入開獎模式
+- 使用者輸入開獎號碼
+- 系統即時計算兌獎狀況，並回傳進度
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 主要技術
 
-## Laravel Sponsors
+| 類別 | 工具 | 說明 |
+|------|------|------|
+| Backend | PHP 8.2, Laravel 10  | 核心邏輯 |
+| Webhook | LINE Messaging API | 接收事件並互動 |
+| Docker | Docker Compose | 開發環境建置 |
+| Tunnel | Cloudflare Tunnel | 將 local Webhook 暴露為 HTTPS |
+| Test | PHPUnit | 整合測試與單元測試 |
+| CI | GitHub Action | 自動化測試流程 |
+| Script | `local-deploy.sh` | 一鍵建置與啟動 Container |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 開發與啟動方式
 
-### Premium Partners
+```bash
+## 啟動本地開發環境
+bash local-deploy.sh
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 或手動執行
+docker compose up --build -d
+docker-compose exec app php artisan migrate
 
-## Contributing
+## 開啟 cloudflared tunnel
+# 前提：
+# 1. 已開通 tunnel 
+# 2. 已設定 LINE Webhook URL
+cloudflared tunnel --config ~/.cloudflared/my-line-bot.yml run my-line-bot
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 賓果遊戲 Demo
+### 1. 加入好友並建立賓果卡
+<img src="./readme/create.gif" alt="建立賓果卡示意" width="300" />
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 2. 開始對獎
+<img src="./readme/start.gif" alt="開始對獎示意" width="300" />

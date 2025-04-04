@@ -11,7 +11,6 @@ echo ""
 echo "清除 Laravel 快取設定"
 docker-compose exec app php artisan config:clear
 docker-compose exec app php artisan cache:clear
-#docker-compose exec app php artisan config:cache
 echo ""
 
 echo "執行 migrate"
