@@ -43,6 +43,12 @@
 ## 開發與啟動方式
 
 ```bash
+## 複製 env
+cp .env.example .env
+
+## 產生 app key
+php artisan key:generate
+
 ## 啟動本地開發環境
 bash local-deploy.sh
 
