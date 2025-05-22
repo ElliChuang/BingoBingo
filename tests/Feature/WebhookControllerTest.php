@@ -7,13 +7,13 @@ use App\Models\User;
 use App\Repositories\BingoCardRepository;
 use App\Services\LineBotService;
 use App\Services\UserStatusService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class WebhookControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     /*****************************
      *       follow events       *

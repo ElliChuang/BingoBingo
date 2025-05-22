@@ -7,14 +7,14 @@ use App\Models\User;
 use App\Repositories\BingoCardRepository;
 use App\Services\BingoCardService;
 use App\Services\LineBotService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
 
 class BingoCardServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected $lineId = 'U1234567890';
     protected $replyToken = 'testToken';
