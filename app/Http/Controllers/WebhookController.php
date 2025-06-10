@@ -39,6 +39,26 @@ class WebhookController extends Controller
      */
     protected $bingoCardService;
 
+    /**
+     * 各指令應執行的 BingoCardService function
+     *
+     * @var array
+     */
+    private $commands = [
+        UserStatusService::MODE_CARD => [
+            '新增賓果卡' => 'checkTempCard',
+            '取消'     => 'cancelTempCard',
+            '繼續'     => 'continueTempCard',
+            '確認'     => 'confirmAndCreateCard',
+            '顯示所有賓果卡' => 'getCards',
+        ],
+        UserStatusService::MODE_GAME => [
+            '開始兌獎' => 'startGame',
+            '顯示所有開獎號碼' => 'getDrawNumbers',
+            '取消兌獎' => 'cancelDrawNumbers'
+        ]
+    ];
+
 
     public function __construct(LineBotService $lineBotService, UserStatusService $userStatusService, UserRegisterService $userRegisterService, BingoCardService $bingoCardService)
     {
@@ -100,8 +120,18 @@ class WebhookController extends Controller
         $messageText = trim(str_replace(' ', '', $oriText));
         $isNumberInput = preg_match('/^\d/', $oriText);
 
-        // 刪除特定編號的賓果卡
-        if (str_starts_with($oriText, '刪除編號')) {
+        // 設定使用者模式
+        $this->userStatusService->setUserMode($lineId, $messageText);
+
+        // 取得當前模式
+        $currentMode = $this->userStatusService->getUserMode($lineId);
+        // 確保該模式下有 command 設定，並執行對應 function
+        if (isset($this->commands[$currentMode]) && array_key_exists($messageText, $this->commands[$currentMode])) {
+            $method = $this->commands[$currentMode][$messageText];
+            $this->bingoCardService->$method($event, $lineId);
+        }
+        // 刪除特定編號的賓果卡 
+        elseif (str_starts_with($oriText, '刪除編號')) {
             // 若不是卡片模式，引導切換模式
             if ($this->userStatusService->getUserMode($lineId) !== UserStatusService::MODE_CARD) {
                 $this->lineBotService->replyMessage($event['replyToken'], "請先輸入「顯示所有賓果卡」，再執行此操作！");
@@ -111,36 +141,9 @@ class WebhookController extends Controller
             $this->bingoCardService->handleDeleteCommand($event, $lineId, $oriText);
             return;
         }
-
-        // 設定使用者模式
-        $this->setUserMode($lineId, $messageText);
-
-        // 卡片模式：對應 function
-        $commands[UserStatusService::MODE_CARD] = [
-            '新增賓果卡' => 'checkTempCard',
-            '取消'     => 'cancelTempCard',
-            '繼續'     => 'continueTempCard',
-            '確認'     => 'confirmAndCreateCard',
-            '顯示所有賓果卡' => 'getCards',
-        ];
-
-        // 遊戲模式：對應 function
-        $commands[UserStatusService::MODE_GAME] = [
-            '開始兌獎' => 'startGame',
-            '顯示所有開獎號碼' => 'getDrawNumbers',
-            '取消兌獎' => 'cancelDrawNumbers'
-        ];
-
-        // 取得當前模式
-        $currentMode = $this->userStatusService->getUserMode($lineId);
-        // 確保該模式下有 command 設定，並執行對應 function
-        if (isset($commands[$currentMode]) && array_key_exists($messageText, $commands[$currentMode])) {
-            $method = $commands[$currentMode][$messageText];
-            $this->bingoCardService->$method($event, $lineId);
-        }
         // 若這個指令存在於其他模式中，但不是當前模式，則提示切換
-        elseif ($this->isCommandInOtherMode($messageText, $currentMode, $commands)) {
-            $correctMode = $this->getCommandCorrectMode($messageText, $commands);
+        elseif ($this->isCommandInOtherMode($messageText, $currentMode)) {
+            $correctMode = $this->getCommandCorrectMode($messageText);
             $guideCommandName = $correctMode === UserStatusService::MODE_CARD ? '顯示所有賓果卡' : '開始兌獎';
             $this->lineBotService->replyMessage($event['replyToken'], "請先輸入：「{$guideCommandName}」，再執行此操作！");
         }
@@ -155,29 +158,9 @@ class WebhookController extends Controller
                 $this->bingoCardService->inputDrawNumbers($event, $lineId, $oriText);
             }
         }
-
-        return;
-    }
-
-    /**
-     * 設定當前使用者模式
-     *
-     * @param string $lineId
-     * @param string $text
-     * @return void
-     */
-    private function setUserMode(string $lineId, string $text): void
-    {
-        $modeMap = [
-            '新增賓果卡' => UserStatusService::MODE_CARD,
-            '顯示所有賓果卡' => UserStatusService::MODE_CARD,
-            '開始兌獎' => UserStatusService::MODE_GAME,
-            '顯示所有已開獎號碼' => UserStatusService::MODE_GAME,
-            '取消兌獎' => UserStatusService::MODE_GAME,
-        ];
-
-        if (array_key_exists($text, $modeMap)) {
-            $this->userStatusService->setUserMode($lineId, $modeMap[$text]);
+        // 其他非指定指令
+        else {
+            $this->lineBotService->replyMessage($event['replyToken'], "請至圖文選單選擇要執行的事項，\n或輸入以下指令：\n- 新增賓果卡\n- 顯示所有賓果卡\n- 開始兌獎\n...等");
         }
 
         return;
@@ -188,12 +171,11 @@ class WebhookController extends Controller
      *
      * @param string $text
      * @param integer|null $currentMode
-     * @param array $commands
      * @return boolean
      */
-    private function isCommandInOtherMode(string $text, ?int $currentMode, array $commands): bool
+    private function isCommandInOtherMode(string $text, ?int $currentMode): bool
     {
-        foreach ($commands as $mode => $commandSet) {
+        foreach ($this->commands as $mode => $commandSet) {
             if ($currentMode !== $mode && array_key_exists($text, $commandSet)) {
                 return true;
             }
@@ -205,12 +187,11 @@ class WebhookController extends Controller
      * 取得指令對應的模式
      *
      * @param string $text
-     * @param array $commands
      * @return integer|null
      */
-    private function getCommandCorrectMode(string $text, array $commands): ?int
+    private function getCommandCorrectMode(string $text): ?int
     {
-        foreach ($commands as $mode => $commandSet) {
+        foreach ($this->commands as $mode => $commandSet) {
             if (array_key_exists($text, $commandSet)) {
                 return $mode;
             }
