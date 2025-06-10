@@ -183,7 +183,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->with($fakeLineId, '新增賓果卡')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -221,7 +221,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->with($fakeLineId, '顯示所有賓果卡')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -261,7 +261,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
+                ->with($fakeLineId, '顯示所有賓果卡')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -303,7 +303,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -342,7 +341,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -394,7 +392,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -453,7 +450,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -505,6 +501,9 @@ class WebhookControllerTest extends TestCase
         $cardId = $card->id;
 
         $this->mock(UserStatusService::class, function ($mock) {
+            $mock->shouldReceive('setUserMode')
+                ->andReturnNull();
+
             $mock->shouldReceive('getUserMode')
                 ->andReturn(UserStatusService::MODE_CARD);
         });
@@ -541,6 +540,9 @@ class WebhookControllerTest extends TestCase
         $cardId = 100000;
 
         $this->mock(UserStatusService::class, function ($mock) {
+            $mock->shouldReceive('setUserMode')
+                ->andReturnNull();
+
             $mock->shouldReceive('getUserMode')
                 ->andReturn(UserStatusService::MODE_CARD);
         });
@@ -577,6 +579,9 @@ class WebhookControllerTest extends TestCase
         $replyToken = 'testToken';
 
         $this->mock(UserStatusService::class, function ($mock) {
+            $mock->shouldReceive('setUserMode')
+                ->andReturnNull();
+
             $mock->shouldReceive('getUserMode')
                 ->andReturn(UserStatusService::MODE_GAME);
         });
@@ -606,6 +611,9 @@ class WebhookControllerTest extends TestCase
         $replyToken = 'testToken';
 
         $this->mock(UserStatusService::class, function ($mock) {
+            $mock->shouldReceive('setUserMode')
+                ->andReturnNull();
+
             $mock->shouldReceive('getUserMode')
                 ->andReturn(UserStatusService::MODE_CARD);
         });
@@ -639,7 +647,6 @@ class WebhookControllerTest extends TestCase
         // 模擬 user 已處於卡片模式
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_CARD)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -683,7 +690,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -723,7 +729,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
+                ->with($fakeLineId, '開始兌獎')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -766,7 +772,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
+                ->with($fakeLineId, '顯示所有開獎號碼')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -804,7 +810,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
+                ->with($fakeLineId, '顯示所有開獎號碼')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -844,7 +850,7 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
+                ->with($fakeLineId, '取消兌獎')
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
@@ -888,7 +894,6 @@ class WebhookControllerTest extends TestCase
 
         $this->mock(UserStatusService::class, function ($mock) use ($fakeLineId) {
             $mock->shouldReceive('setUserMode')
-                ->with($fakeLineId, UserStatusService::MODE_GAME)
                 ->andReturnNull();
 
             $mock->shouldReceive('getUserMode')
