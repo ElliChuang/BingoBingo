@@ -18,13 +18,13 @@
 ### 1. 加入好友
 使用者加入 LINE Bot 時會觸發 Webhook，後端建立使用者資料，並回傳歡迎訊息。
 
-### [2. 建立賓果卡](#1-加入好友並建立賓果卡)
-- 使用者可透過圖文選單選擇「新增賓果卡」
+### [2. 建立賓果卡](#2-加入好友並建立賓果卡)
+- 使用者可透過圖文選單選擇「新增賓果卡」，進入卡片新增模式
 - 系統引導輸入 5x5 的賓果卡號碼
 - 使用者確認後會建立卡片
 
-### [3. 開始對獎](#2-開始對獎)
-- 輸入「開始兌獎」進入開獎模式
+### [3. 開始兌獎](#3-進行兌獎)
+- 輸入「開始兌獎」進入兌獎模式
 - 使用者輸入開獎號碼
 - 系統即時計算兌獎狀況，並回傳進度
 
@@ -32,7 +32,7 @@
 
 | 類別 | 工具 | 說明 |
 |------|------|------|
-| Backend | PHP 8.2, Laravel 10  | 核心邏輯 |
+| Backend | PHP 8.2, Laravel 10  | 遊戲核心邏輯，採用 Controller + Service + Repository 分層架構 |
 | Webhook | LINE Messaging API | 接收事件並互動 |
 | Docker | Docker Compose | 開發環境建置 |
 | Tunnel | Cloudflare Tunnel | 將 local Webhook 暴露為 HTTPS |
@@ -64,8 +64,11 @@ cloudflared tunnel --config ~/.cloudflared/my-line-bot.yml run my-line-bot
 ```
 
 ## 賓果遊戲 Demo
-### 1. 加入好友並建立賓果卡
+### 1. 圖文選單頁面
+<img src="./readme/options.jpg" alt="圖文選單" width="300" />
+
+### 2. 加入好友並建立賓果卡
 <img src="./readme/create.gif" alt="建立賓果卡示意" width="300" />
 
-### 2. 開始對獎
-<img src="./readme/start.gif" alt="開始對獎示意" width="300" />
+### 3. 進行兌獎
+<img src="./readme/start.gif" alt="開始兌獎示意" width="300" />
