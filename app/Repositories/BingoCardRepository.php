@@ -14,9 +14,9 @@ class BingoCardRepository
 
     public function createBingoCard(string $lineId, array $numbers)
     {
-        return BingoCard::insert([
+        return BingoCard::create([
             'line_id' => $lineId,
-            'numbers' => json_encode($numbers, JSON_UNESCAPED_UNICODE)
+            'numbers' => $numbers,
         ]);
     }
 

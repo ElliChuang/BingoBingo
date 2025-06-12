@@ -9,7 +9,7 @@ class BingoCard extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'numbers'];
+    protected $fillable = ['user_id', 'line_id', 'numbers'];
 
     protected $casts = [
         'numbers' => 'array', // 將 JSON 轉換成陣列
